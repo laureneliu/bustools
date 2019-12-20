@@ -398,6 +398,7 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
   static struct option long_options[] = {
     {"output", required_argument, 0, 'o'},
     {"threshold", required_argument, 0, 'f'},
+    {"nodist1", no_argument, 0, 'n'},
     {0, 0, 0, 0}
   };
 
@@ -410,6 +411,9 @@ void parse_ProgramOptions_whitelist(int argc, char **argv, Bustools_opt &opt) {
         break;
       case 'f':
         opt.threshold = atoi(optarg);
+        break;
+      case 'n':
+        opt.nodist1 = true;
         break;
       default:
         break;
@@ -1360,6 +1364,7 @@ void Bustools_whitelist_Usage() {
     << "Options: " << std::endl
     << "-o, --output        File for the whitelist" << std::endl
     << "-f, --threshold     Minimum number of times a barcode must appear to be included in whitelist" << std::endl
+    << "    --nodist1       No hamming distance 1 barcodes in whitelist" << std::endl
     << std::endl;
 }
 

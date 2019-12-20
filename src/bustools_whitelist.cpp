@@ -8,6 +8,8 @@
 
 #include "bustools_whitelist.h"
 
+#include "roaring.hh"
+
 #define ERROR_RATE 0.01
 
 void bustools_whitelist(Bustools_opt &opt) {
@@ -38,6 +40,7 @@ void bustools_whitelist(Bustools_opt &opt) {
   uint64_t curr_umi;
   uint64_t curr_bc;
   int bc_count = -1;
+  std::vector<uint64_t> whitelist; // Only used when --nodist1
 
  /* Determine threshold. */ 
   if (opt.threshold) { // Custom threshold
@@ -114,8 +117,12 @@ void bustools_whitelist(Bustools_opt &opt) {
     /* Process all the records we just went through. */
     for (const auto &rec : vec) {
       if (rec.count >= threshold) {
-        o << binaryToString(rec.barcode, bclen) << "\n";
-        ++wl_count;
+	if (opt.nodist1) {
+          whitelist.push_back(rec.barcode);
+	} else {
+          o << binaryToString(rec.barcode, bclen) << "\n";
+          ++wl_count;
+	}
       }
     }
   }
@@ -134,8 +141,12 @@ void bustools_whitelist(Bustools_opt &opt) {
     for (size_t i = 0; i < rc; i++) {
       if (curr_bc != p[i].barcode || bc_count == -1) {
         if (bc_count >= threshold) {
-          o << binaryToString(curr_bc, bclen) << "\n";
-          ++wl_count;
+          if (opt.nodist1) {
+            whitelist.push_back(curr_bc);
+          } else {
+            o << binaryToString(curr_bc, bclen) << "\n";
+            ++wl_count;
+          }
         }
         bc_count = p[i].count;
         curr_bc = p[i].barcode;
@@ -149,8 +160,45 @@ void bustools_whitelist(Bustools_opt &opt) {
   /* Done reading BUS file. */
   
   if (bc_count >= threshold) {
-    o << binaryToString(curr_bc, bclen) << "\n";
-    ++wl_count;
+    if (opt.nodist1) {
+      whitelist.push_back(curr_bc);
+    } else {
+      o << binaryToString(curr_bc, bclen) << "\n";
+      ++wl_count;
+    }
+  }
+
+  /* Remove hamming distance 1 barcodes */
+  if (opt.nodist1) {
+    // Hamming distance code copied from bustools_correct.cpp
+    size_t bc2 = (bclen+1)/2;
+    uint64_t mask_size = (1ULL << (2*bc2));
+    uint64_t lower_mask = (1ULL<<(2*bc2))-1;
+    uint64_t upper_mask = (1ULL<<(2*(bclen-bc2)))-1;
+
+    std::vector<std::pair<Roaring,Roaring>> correct(1ULL<<(2*bc2)); // 4^(bc/2) possible barcodes
+    for (uint64_t b : whitelist) {
+      // Check whether barcode already exists (hamming distance 1)
+      uint64_t lb = b & lower_mask;
+      uint64_t ub = (b>>(2*bc2)) & upper_mask;   
+      uint64_t lbc=0,ubc=0;
+      int correct_lower = search_for_mismatch(correct[ub].second,bc2,lb,lbc);
+      int correct_upper = search_for_mismatch(correct[lb].first,bclen - bc2,ub,ubc);
+      int nc = correct_lower + correct_upper;
+
+      // Barcode already exists
+      if (nc == 1) continue;
+
+      // Doesn't already exist; add
+      lb = b & lower_mask;
+      ub = (b>>(2*bc2)) & upper_mask;
+
+      correct[ub].second.add(lb);
+      correct[lb].first.add(ub);
+
+      o << binaryToString(b, bclen) << "\n";
+      ++wl_count;
+    }
   }
 
   delete[] p; p = nullptr;

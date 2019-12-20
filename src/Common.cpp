@@ -326,3 +326,27 @@ void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::
     ec2gene.push_back(std::move(u));
   }
 }
+
+int search_for_mismatch(const Roaring& r, const size_t bc, const uint64_t b, uint64_t &c) {
+  int counts = 0;
+  if (r.isEmpty()) {
+    return 0;
+  } else {
+    size_t sh = bc-1;          
+
+    for (size_t i = 0; i < bc; ++i) {
+      for (uint64_t d = 1; d <= 3; d++) {
+        uint64_t y = b ^ (d << (2*sh));
+        if (r.contains(y)) {
+          if (counts == 0) {
+            c = y;
+          }
+          counts++;
+        }
+      }                
+      sh--;
+    }
+  }
+  return counts;
+}
+

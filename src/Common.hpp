@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <sstream>
 
+#include "roaring.hh"
 
 #define BUSTOOLS_VERSION "0.39.4"
 
@@ -57,6 +58,7 @@ struct Bustools_opt {
 
   /* whitelist */
   int threshold;
+  bool nodist1 = false;
 
   /* text */
   bool text_dumpflags = false;
@@ -119,6 +121,7 @@ void vt2gene(const std::vector<int32_t> &v, const std::vector<int32_t> &genemap,
 void intersect_genes_of_ecs(const std::vector<int32_t> &ecs, const  std::vector<std::vector<int32_t>> &ec2genes, std::vector<int32_t> &glist);
 int32_t intersect_ecs_with_genes(const std::vector<int32_t> &ecs, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ecmap, std::unordered_map<std::vector<int32_t>, int32_t, SortedVectorHasher> &ecmapinv, std::vector<std::vector<int32_t>> &ec2genes, bool assumeIntersectionIsEmpty = true);
 void create_ec2genes(const std::vector<std::vector<int32_t>> &ecmap, const std::vector<int32_t> &genemap, std::vector<std::vector<int32_t>> &ec2gene);
+int search_for_mismatch(const Roaring& r, const size_t bc, const uint64_t b, uint64_t &c);
 
 
 
